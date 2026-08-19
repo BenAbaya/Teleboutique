@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BENABAYA - Marketplace Cameroun V6.16</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#222;--primary:#25D366}
+body.dark{--bg:#121212;--card:#1e1e1e;--text:#eee}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+body{background:var(--bg);color:var(--text)}
+header{background:var(--primary);color:#fff;padding:15px;text-align:center;font-size:20px;font-weight:bold;position:sticky;top:0}
+.btn{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;margin:4px;font-weight:bold}
+.btn-buy{background:#007bff;color:#fff}
+.btn-whatsapp{background:#25D366;color:#fff}
+.btn-chat{background:#ff9800;color:#fff}
+.card{background:var(--card);padding:15px;margin:10px;border-radius:12px;box-shadow:0 2px 8px #0002}
+input,textarea{width:100%;padding:10px;margin:5px 0;border:1px solid #ccc;border-radius:8px;font-size:15px}
+</style>
+</head>
+<body>
+<header>BENABAYA V6.16 - Marketplace Cameroun</header>
+
+<div id="app">
+  <h3 style="padding:10px">Publier un produit</h3>
+  <div class="card">
+    <input id="titre" placeholder="Titre du produit">
+    <textarea id="desc" placeholder="Description"></textarea>
+    <input id="prix" placeholder="Prix FCFA">
+    <input id="tel" placeholder="Numéro WhatsApp 2376...">
+    <button class="btn" style="background:var(--primary);color:#fff;width:100%" onclick="publier()">Publier</button>
+  </div>
+
+  <h3 style="padding:10px">Produits en ligne</h3>
+  <div id="liste">Chargement...</div>
+</div>
+
+<script>
+// CONFIG FIREBASE TELEBOUTIQUE
+const firebaseConfig = {
+  apiKey: "BGxsCpBOS97I0XUenkVN6F-7YeKpUsKgecKl7WNiwAdS-kyZFWyjhvwPFeaqY6-Dbae_rH4HusoVGd1Rt0iL4y4",
+  authDomain: "teleboutique-5d7ad.firebaseapp.com",
+  projectId: "teleboutique-5d7ad",
+  storageBucket: "teleboutique-5d7ad.appspot.com",
+  appId: "386421536162:android:6fa917bbcf9b57a5d72efb"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function publier(){
+  if(!titre.value || !prix.value || !tel.value) return alert("Remplis Titre, Prix et Tel !")
+  db.collection("produits").add({
+    titre: titre.value,
+    desc: desc.value,
+    prix: prix.value,
+    tel: tel.value,
+    date: new Date()
+  }).then(()=>alert("Produit publié !"));
+  titre.value="";desc.value="";prix.value="";tel.value="";
+}
+
+// AFFICHAGE EN TEMPS REEL
+db.collection("produits").orderBy("date","desc").onSnapshot(snap=>{
+  if(snap.empty){ liste.innerHTML="<p style='padding:10px'>Aucun produit. Sois le premier !</p>"; return}
+  liste.innerHTML="";
+  snap.forEach(doc=>{
+    const p = doc.data();
+    liste.innerHTML += `
+    <div class="card">
+      <h4>${p.titre}</h4>
+      <p>${p.desc}</p>
+      <b style="font-size:18px;color:var(--primary)">${p.prix} FCFA</b><br>
+      <button class="btn btn-buy" onclick="alert('Commande envoyée pour: ${p.titre}')">Commander</button>
+      <button class="btn btn-whatsapp" onclick="window.open('https://wa.me/${p.tel}','_blank')">WhatsApp</button>
+      <button class="btn btn-chat" onclick="alert('Chat entre utilisateurs arrive bientôt')">Discuter</button>
+    </div>`
+  })
+})
+</script>
+</body>
+</html>
