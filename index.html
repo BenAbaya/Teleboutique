@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#FF6B00">
+<link rel="manifest" href="manifest.json">
+<title>BENABAYA - Marketplace Cameroun</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#333;--orange:#FF6B00;--border:#ddd}
+body.dark{--bg:#121212;--card:#1e1e1e;--text:#eee;--orange:#FF8533;--border:#333}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+body{background:var(--bg);color:var(--text)}
+header{background:var(--orange);color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+header h2{font-size:18px}
+header button{background:#fff;color:var(--orange);border:none;padding:6px 10px;border-radius:20px;font-weight:bold;cursor:pointer}
+nav{display:flex;background:var(--card);box-shadow:0 2px 4px #0001;position:sticky;top:50px;z-index:99;overflow-x:auto}
+nav button{flex:1;border:none;background:none;padding:14px;font-size:14px;cursor:pointer;color:var(--text);white-space:nowrap}
+nav button.active{color:var(--orange);font-weight:bold;border-bottom:3px solid var(--orange)}
+.container{padding:12px;min-height:calc(100vh - 130px)}
+.card{background:var(--card);padding:15px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 5px #0001}
+input,textarea,select{width:100%;padding:12px;margin:8px 0;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:15px}
+.btn{background:var(--orange);color:#fff;border:none;padding:14px;border-radius:8px;width:100%;cursor:pointer;font-weight:bold;font-size:16px;margin-top:10px}
+.btn:active{opacity:0.8}
+.btn-green{background:#00C853}
+.btn-red{background:#ff4444}
+.produit{border:1px solid var(--border);padding:12px;border-radius:10px;margin-bottom:12px;background:var(--card)}
+.produit img{width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:8px;background:#eee}
+.produit h4{color:var(--orange);margin-bottom:5px}
+.prix{font-size:18px;font-weight:bold;color:green}
+.video-item video,.video-item iframe{width:100%;height:220px;border-radius:10px;background:#000;border:none}
+.hidden{display:none}
+.error{background:#ff4444;color:#fff;padding:10px;border-radius:8px;margin:10px 0;text-align:center}
+.success{background:#00C853;color:#fff;padding:10px;border-radius:8px;margin:10px 0;text-align:center}
+.warning{background:#FFA000;color:#fff;padding:10px;border-radius:8px;margin:10px 0;text-align:center}
+.loader{text-align:center;padding:20px;color:#888}
+#previewImg{max-width:100%;border-radius:8px;margin-top:8px}
+.vendeur-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<header>
+  <h2>BENABAYA 🇨🇲</h2>
+  <button onclick="toggleTheme()">🌙</button>
+</header>
+
+<nav>
+  <button onclick="showPage('acheter')" class="active" id="btnAcheter">Acheter</button>
+  <button onclick="showPage('vendre')" id="btnVendre">Vendre</button>
+  <button onclick="showPage('videos')" id="btnVideos">Vidéos</button>
+  <button onclick="showPage('compte')" id="btnCompte">Compte</button>
+  <button onclick="showPage('admin')" id="btnAdmin">Admin</button>
+</nav>
+
+<div class="container">
+  <div id="pageAcheter">
+    <div id="msgAcheter"></div>
+    <h3>Articles en ligne 🔥</h3>
+    <div id="listeProduits" class="loader">Chargement des articles...</div>
+  </div>
+
+  <div id="pageVendre" class="hidden">
+    <div class="card">
+      <h3>Publier un article</h3>
+      <p id="infoVendeur"></p>
+      <div id="msgVendre"></div>
+      <input id="nomProduit" placeholder="Nom du produit">
+      <input id="prixProduit" type="number" placeholder="Prix en FCFA">
+      <textarea id="descProduit" placeholder="Description" rows="3"></textarea>
+
+      <p><b>Photo depuis la galerie:</b></p>
+      <input type="file" id="fileProduit" accept="image/*" onchange="previewFile()">
+      <img id="previewImg" class="hidden">
+      <p>OU Colle un lien image:</p>
+      <input id="imgProduit" placeholder="https://i.ibb.co/...">
+
+      <p>Lien Vidéo: YouTube ou.mp4</p>
+      <input id="videoProduit" placeholder="https://youtube.com/watch?v=...">
+      <button class="btn" onclick="publierProduit()">Publier l'article</button>
+    </div>
+  </div>
+
+  <div id="pageVideos" class="hidden">
+    <h3>BENABAYA Divertissement 🎬</h3>
+    <div id="listeVideos" class="loader">Chargement des vidéos...</div>
+  </div>
+
+  <div id="pageCompte" class="hidden">
+    <div class="card" id="formCompte">
+      <h3>Inscription Vendeur</h3>
+      <div id="msgCompte"></div>
+      <input id="nomVendeur" placeholder="Nom complet">
+      <input id="emailVendeur" type="email" placeholder="Email">
+      <input id="telVendeur" placeholder="Téléphone">
+      <input id="passVendeur" type="password" placeholder="Mot de passe">
+      <button class="btn" onclick="register()">Créer mon compte</button>
+      <hr style="margin:15px 0">
+      <h3>Connexion</h3>
+      <input id="lemail" type="email" placeholder="Email">
+      <input id="lpass" type="password" placeholder="Mot de passe">
+      <button class="btn" onclick="login()">Se connecter</button>
+    </div>
+    <div class="card hidden" id="espaceVendeur">
+      <h3>Bonjour <span id="nomConnecte"></span></h3>
+      <p id="statutVendeur"></p>
+      <button class="btn btn-red" onclick="logout()">Se déconnecter</button>
+    </div>
+  </div>
+
+  <div id="pageAdmin" class="hidden">
+    <div class="card" id="formAdmin">
+      <h3>Connexion Admin</h3>
+      <input id="passAdmin" type="password" placeholder="Mot de passe admin">
+      <button class="btn" onclick="loginAdmin()">Entrer</button>
+    </div>
+    <div class="hidden" id="espaceAdmin">
+      <div class="card">
+        <h3>Admin - Approuver les vendeurs</h3>
+        <div id="listeVendeurs" class="loader">Chargement...</div>
+      </div>
+      <div class="card">
+        <h3>Publier Vidéo</h3>
+        <input id="titreVideo" placeholder="Titre de la vidéo">
+        <input id="urlVideo" placeholder="Lien YouTube">
+        <input id="urlDirect" placeholder="Lien direct.mp4 Cloudinary">
+        <button class="btn" onclick="publierVideo()">Publier Vidéo</button>
+      </div>
+      <button class="btn btn-red" onclick="logoutAdmin()">Déconnexion Admin</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "BGxsCpBOS97I0XUenkVN6F-7YeKpUsKgecKl7WNiwAdS-kyZFWyjhvwPFeaqY6-Dbae_rH4HusoVGd1Rt0iL4y4",
+  authDomain: "teleboutique-5d7ad.firebaseapp.com",
+  projectId: "teleboutique-5d7ad",
+  storageBucket: "teleboutique-5d7ad.appspot.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ADMIN_PASS = "benabaya2025";
+
+function toggleTheme(){
+  document.body.classList.toggle('dark');
+  localStorage.theme = document.body.classList.contains('dark')? 'dark' : 'light';
+}
+if(localStorage.theme=='dark') document.body.classList.add('dark');
+
+function showPage(page){
+  document.querySelectorAll('.container > div').forEach(d=>d.classList.add('hidden'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page'+page.charAt(0).toUpperCase()+page.slice(1)).classList.remove('hidden');
+  document.getElementById('btn'+page.charAt(0).toUpperCase()+page.slice(1)).classList.add('active');
+  if(page=='acheter') chargerProduits();
+  if(page=='videos') chargerVideos();
+  if(page=='admin') chargerVendeurs();
+  checkLogin();
+}
+
+function msg(id, text, type){
+  document.getElementById(id).innerHTML = `<div class="${type}">${text}</div>`;
+  setTimeout(()=>document.getElementById(id).innerHTML="",4000);
+}
+
+// GALERIE
+function previewFile(){
+  const file = fileProduit.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      previewImg.classList.remove('hidden');
+      imgProduit.value = e.target.result;
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+// PRODUITS
+async function publierProduit(){
+  const vendeur = JSON.parse(localStorage.getItem('vendeur'));
+  if(!vendeur) return msg('msgVendre','Connecte-toi d\'abord','error');
+  if(vendeur.statut!= 'approuve') return msg('msgVendre','Compte en attente d\'approbation','warning');
+
+  const data = {
+    nom:nomProduit.value,
+    prix:Number(prixProduit.value),
+    desc:descProduit.value,
+    img:imgProduit.value,
+    video:videoProduit.value,
+    vendeur:vendeur.nom,
+    statut:"en_ligne",
+    date:Date.now()
+  };
+  if(!data.nom ||!data.prix) return msg('msgVendre','Remplis Nom et Prix','error');
+
+  try{
+    await db.collection('produits').add(data);
+    msg('msgVendre','Article publié avec succès!','success');
+    nomProduit.value=prixProduit.value=descProduit.value=imgProduit.value=videoProduit.value="";
+    previewImg.classList.add('hidden');
+    chargerProduits();
+  }catch(e){
+    msg('msgVendre','Erreur: '+e.message,'error');
+  }
+}
+
+async function chargerProduits(){
+  listeProduits.innerHTML='<div class="loader">Chargement...</div>';
+  try{
+    const snap = await db.collection('produits').get();
+    let produits = [];
+    snap.forEach(doc=>{
+      const p = doc.data();
+      if(p.statut == "en_ligne") produits.push(p);
+    });
+    produits.sort((a,b)=>b.date-a.date);
+
+    if(produits.length==0){listeProduits.innerHTML="Aucun article pour le moment"; return;}
+    listeProduits.innerHTML="";
+    produits.forEach(p=>{
+      listeProduits.innerHTML += `
+      <div class="produit">
+        ${p.img?`<img src="${p.img}">`:""}
+        <h4>${p.nom}</h4>
+        <p>${p.desc}</p>
+        <p class="prix">${p.prix} FCFA</p>
+        <p><small>Vendu par: ${p.vendeur||'Anonyme'}</small></p>
+        ${p.video?`<video controls src="${p.video}"></video>`:""}
+      </div>`;
+    });
+  }catch(err){
+    listeProduits.innerHTML=`<div class="error">Erreur: ${err.message}</div>`;
+  }
+}
+
+// VIDEOS
+async function publierVideo(){
+  const url = urlVideo.value || urlDirect.value;
+  if(!titreVideo.value ||!url) return alert("Titre et Lien obligatoires");
+  await db.collection('videos').add({titre:titreVideo.value, url, date:Date.now()});
+  alert("Video publiée");
+  titreVideo.value=urlVideo.value=urlDirect.value="";
+  chargerVideos();
+}
+
+function getEmbed(url){
+  if(url.includes("youtube.com/watch")) return `https://www.youtube.com/embed/${url.split("v=")[1].split("&")[0]}`;
+  if(url.includes("youtu.be/")) return `https://www.youtube.com/embed/${url.split("youtu.be/")[1].split("?")[0]}`;
+  return url;
+}
+
+async function chargerVideos(){
+  listeVideos.innerHTML='<div class="loader">Chargement...</div>';
+  const snap = await db.collection('videos').get();
+  let videos = [];
+  snap.forEach(d=>videos.push({id:d.id,...d.data()}));
+  videos.sort((a,b)=>b.date-a.date);
+
+  if(videos.length==0){listeVideos.innerHTML="Aucune vidéo"; return;}
+  listeVideos.innerHTML="";
+  videos.forEach(v=>{
+    const embed = getEmbed(v.url);
+    let tag = embed.includes("youtube")? `<iframe src="${embed}" allowfullscreen></iframe>` : `<video controls src="${embed}"></video>`;
+    listeVideos.innerHTML += `<div class="video-item card"><h4>${v.titre}</h4>${tag}</div>`;
+  });
+}
+
+// COMPTE AVEC APPROBATION
+async function register(){
+  if(!nomVendeur.value ||!emailVendeur.value) return msg('msgCompte','Remplis tout','error');
+  try{
+    await db.collection('vendeurs').add({
+      nom:nomVendeur.value,email:emailVendeur.value,tel:telVendeur.value,pass:passVendeur.value,
+      statut:"en_attente", // NOUVEAU
+      date:Date.now()
+    });
+    msg('msgCompte','Compte créé! En attente d\'approbation Admin','warning');
+    nomVendeur.value=emailVendeur.value=telVendeur.value=passVendeur.value="";
+  }catch(e){
+    msg('msgCompte','Erreur: '+e.message,'error');
+  }
+}
+
+async function login(){
+  try{
+    const snap = await db.collection('vendeurs').where('email','==',lemail.value).where('pass','==',lpass.value).get();
+    if(snap.empty) return alert("Email ou mot de passe incorrect");
+    const doc = snap.docs[0];
+    const vendeur = {id:doc.id,...doc.data()};
+
+    if(vendeur.statut!= 'approuve') return alert("Votre compte est en attente d'approbation par l'admin");
+
+    localStorage.setItem('vendeur', JSON.stringify(vendeur));
+    checkLogin();
+    msg('msgCompte','Connecté avec succès','success');
+  }catch(e){
+    alert("Erreur: "+e.message);
+  }
+}
+function logout(){
+  localStorage.removeItem('vendeur');
+  checkLogin();
+}
+
+// ADMIN
+function loginAdmin(){
+  if(passAdmin.value == ADMIN_PASS){
+    localStorage.setItem('admin','ok');
+    checkLogin();
+    chargerVendeurs();
+  }else alert("Mauvais mot de passe admin");
+}
+function logoutAdmin(){
+  localStorage.removeItem('admin');
+  checkLogin();
+}
+
+async function chargerVendeurs(){
+  if(!localStorage.getItem('admin')) return;
+  listeVendeurs.innerHTML='<div class="loader">Chargement...</div>';
+  const snap = await db.collection('vendeurs').orderBy('date','desc').get();
+  if(snap.empty){listeVendeurs.innerHTML="Aucun vendeur"; return;}
+
+  listeVendeurs.innerHTML="";
+  snap.forEach(doc=>{
+    const v = {id:doc.id,...doc.data()};
+    const couleur = v.statut=='approuve'?'success':'warning';
+    listeVendeurs.innerHTML += `
+    <div class="vendeur-item">
+      <div>
+        <b>${v.nom}</b><br>
+        <small>${v.email} - ${v.tel}</small><br>
+        <span class="${couleur}" style="padding:3px 8px;border-radius:5px;font-size:12px">${v.statut}</span>
+      </div>
+      ${v.statut=='en_attente'?`<button class="btn btn-green" onclick="approuverVendeur('${v.id}')">Approuver</button>`:""}
+    </div>`;
+  });
+}
+
+async function approuverVendeur(id){
+  await db.collection('vendeurs').doc(id).update({statut:'approuve'});
+  alert("Vendeur approuvé");
+  chargerVendeurs();
+}
+
+function checkLogin(){
+  const vendeur = JSON.parse(localStorage.getItem('vendeur'));
+  const admin = localStorage.getItem('admin');
+
+  if(vendeur){
+    formCompte.classList.add('hidden');
+    espaceVendeur.classList.remove('hidden');
+    nomConnecte.innerText = vendeur.nom;
+    const statutTxt = vendeur.statut=='approuve'?'<div class="success">Compte Approuvé - Vous pouvez publier</div>':'<div class="warning">Compte en attente d\'approbation</div>';
+    statutVendeur.innerHTML = statutTxt;
+    infoVendeur.innerHTML = statutTxt;
+  }else{
+    formCompte.classList.remove('hidden');
+    espaceVendeur.classList.add('hidden');
+    infoVendeur.innerHTML = `<div class="error">Vous devez vous connecter pour publier</div>`;
+  }
+
+  if(admin=='ok'){
+    formAdmin.classList.add('hidden');
+    espaceAdmin.classList.remove('hidden');
+  }else{
+    formAdmin.classList.remove('hidden');
+    espaceAdmin.classList.add('hidden');
+  }
+}
+
+// LANCEMENT
+chargerProduits();
+checkLogin();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
+</script>
+</body>
+</html>
